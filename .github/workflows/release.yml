@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: write
-  issues: write
-  actions: write
 
 jobs:
   release:
@@ -18,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get Plugin Version from Plugin File
+      - name: Get Plugin Version
         id: get_version
         run: |
           FILE=$(find . -name "publications-main.php" | head -n 1)
@@ -36,15 +34,26 @@ jobs:
 
       - name: Create Plugin ZIP
         run: |
-          cd orcid-publications
+          # Create a temporary directory with correct structure
+          mkdir -p temp-plugin-dir
+          
+          # Copy only necessary files (adjust these patterns as needed)
+          cp -r *.php css/ js/ vendor/ temp-plugin-dir/
+          
+          # Create ZIP from the correct directory level
+          cd temp-plugin-dir
           zip -r ../orcid-publications.zip .
-      
+          cd ..
+          
+          # Verify the ZIP structure
+          unzip -l orcid-publications.zip | head -20
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.VERSION }}
-          name: v${{ env.VERSION }}
-          generate_release_notes: true
-          files: ../orcid-publications.zip
+          tag_name: ${{ env.VERSION }}  # Remove 'v' prefix to match WordPress standards
+          name: "Version ${{ env.VERSION }}"
+          body: "Release of ORCID Publications plugin version ${{ env.VERSION }}"
+          files: orcid-publications.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
