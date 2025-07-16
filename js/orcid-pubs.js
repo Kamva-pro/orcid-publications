@@ -5,7 +5,6 @@ jQuery(document).ready(function($) {
     const yearFilter = $('#yearFilter');
     
     let allWorks = [];
-    let displayedWorks = [];
     let currentIndex = 0;
     const pageSize = 10;
     let currentOrcidId = orcidPubVars.current_page;
@@ -13,7 +12,7 @@ jQuery(document).ready(function($) {
     let currentSearch = '';
     let currentYear = '';
     
-    // Initial load
+    // Auto-fetch on page load if we're on a relevant page
     if (currentOrcidId) {
         fetchPublications();
     } else {
@@ -34,20 +33,27 @@ jQuery(document).ready(function($) {
         fetchPublications();
     });
     
-    // Load more handler
-    loadMoreBtn.on('click', function() {
+    // Load more handler - prevent default form submission
+    loadMoreBtn.on('click', function(e) {
+        e.preventDefault();
         if (!isLoading) {
-            currentIndex += pageSize;
-            fetchPublications();
+            fetchPublications(true); // true = is load more action
         }
     });
     
-    function fetchPublications() {
+    function fetchPublications(isLoadMore = false) {
+        // Don't proceed if we're already loading
+        if (isLoading) return;
+        
         isLoading = true;
         
-        // Only show loading state on initial load or when filters change
-        if (currentIndex === 0) {
+        // Show loading state only on initial load or filter changes
+        if (!isLoadMore) {
             showLoadingState();
+        } else {
+            // For "Load More", show loading on the button
+            loadMoreBtn.prop('disabled', true)
+                      .html('<i class="fas fa-spinner fa-spin"></i> Loading...');
         }
         
         const endpoint = currentOrcidId === 'all' 
@@ -65,20 +71,20 @@ jQuery(document).ready(function($) {
             url: `${orcidPubVars.rest_url}/${endpoint}`,
             data: params,
             success: function(response) {
-                if (currentIndex === 0) {
-                    // First load or filter changed - replace all works
+                if (!isLoadMore) {
+                    // Initial load or filter changed - replace all works
                     allWorks = response.data;
-                    resultsDiv.empty(); // Only clear on initial load
+                    resultsDiv.empty();
                 } else {
                     // Append new works to existing ones
                     allWorks = [...allWorks, ...response.data];
                 }
                 
-                // Display all loaded works (not just the new ones)
+                // Display all works up to current index + pageSize
                 displayWorks(allWorks.slice(0, currentIndex + pageSize));
                 
                 // Update pagination controls
-                if (currentIndex + pageSize < response.total) {
+                if (currentIndex + response.data.length < response.total) {
                     loadMoreBtn.show();
                 } else {
                     loadMoreBtn.hide();
@@ -87,33 +93,41 @@ jQuery(document).ready(function($) {
                 if (response.data.length === 0 && currentIndex === 0) {
                     showEmptyState();
                 }
+                
+                // Increment index only after successful load
+                if (isLoadMore) {
+                    currentIndex += pageSize;
+                }
             },
             error: function(xhr, status, error) {
                 showErrorState(error);
+                // Reset index if load more failed
+                if (isLoadMore) {
+                    currentIndex -= pageSize;
+                }
             },
             complete: function() {
                 isLoading = false;
+                if (isLoadMore) {
+                    loadMoreBtn.prop('disabled', false)
+                               .html('<i class="fas fa-arrow-down"></i> Load More');
+                }
             }
         });
     }
     
-    function displayWorks(worksToDisplay) {
-        if (worksToDisplay.length === 0) {
+    function displayWorks(works) {
+        if (works.length === 0) {
             showEmptyState();
             return;
         }
         
-        // Clear only if it's the first page
+        // Clear only if it's not a load more action
         if (currentIndex === 0) {
             resultsDiv.empty();
         }
         
-        // Only append the new works (not all of them)
-        const worksToAdd = currentIndex === 0 
-            ? worksToDisplay 
-            : worksToDisplay.slice(currentIndex);
-        
-        worksToAdd.forEach(work => {
+        works.forEach(work => {
             const workEntry = $(`
                 <div class="work-entry">
                     <div class="date-col">
@@ -168,4 +182,5 @@ jQuery(document).ready(function($) {
             </div>
         `);
         loadMoreBtn.hide();
-    }});
+    }
+});
