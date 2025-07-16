@@ -543,7 +543,6 @@ class ORCID_Publications_Plugin {
     }
 }
 
-// Load the update checker (after your class definition)
 require_once plugin_dir_path(__FILE__) . 'vendor/autoload.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
