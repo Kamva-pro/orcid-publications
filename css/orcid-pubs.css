@@ -1,0 +1,228 @@
+.orcid-publications-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.publications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.publications-header h1 {
+    font-size: 2rem;
+    color: #2b2d42;
+    margin: 0;
+}
+
+.controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box input {
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    width: 250px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #8d99ae;
+}
+
+#yearFilter {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    background-color: white;
+}
+
+#publicationsResults {
+    margin-top: 1rem;
+}
+
+.work-entry {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border-left: 4px solid #4361ee;
+}
+
+.work-entry:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+}
+
+.date-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.date {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #8d99ae;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.date i {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+.content-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.title {
+    font-weight: 600;
+    font-size: 1.15rem;
+    margin-bottom: 0.75rem;
+    color: #2b2d42;
+    line-height: 1.4;
+}
+
+.author {
+    font-size: 0.95rem;
+    color: #8d99ae;
+    margin-bottom: 0.5rem;
+}
+
+.read-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #4361ee;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    margin-top: 0.5rem;
+}
+
+.read-more:hover {
+    color: #3a56d4;
+    gap: 0.7rem;
+}
+
+#loadMoreBtn {
+    display: block;
+    margin: 2.5rem auto 0;
+    padding: 0.9rem 2.2rem;
+    font-size: 1rem;
+    background: linear-gradient(135deg, #4361ee, #3a56d4);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+#loadMoreBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+}
+
+.empty-state, .loading {
+    text-align: center;
+    padding: 3rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.empty-state i, .loading i {
+    font-size: 2.5rem;
+    color: #8d99ae;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.empty-state h3, .loading h3 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #2b2d42;
+}
+
+.empty-state p, .loading p {
+    color: #8d99ae;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 1.5rem;
+    border: 4px solid rgba(67, 97, 238, 0.2);
+    border-top: 4px solid #4361ee;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-state {
+    text-align: center;
+    padding: 2rem;
+    background: #fef2f2;
+    border-radius: 8px;
+    color: #f44336;
+}
+
+.error-state i {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .publications-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .work-entry {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .date {
+        align-self: flex-start;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+}
