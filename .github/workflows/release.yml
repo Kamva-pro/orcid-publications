@@ -1,0 +1,31 @@
+name: Auto Release Plugin
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get Plugin Version from Header
+        id: get_version
+        run: |
+          FILE=$(find . -name "*.php" | head -n 1)
+          VERSION=$(grep -Eo "Version:\s*[0-9.]+" "$FILE" | head -n 1 | sed 's/Version:\s*//')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Detected version: $VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
