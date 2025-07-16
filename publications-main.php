@@ -553,7 +553,6 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
     'orcid-publications'
 );
 
-// Optional: Add license check
 $myUpdateChecker->addQueryArgFilter(function($queryArgs) {
     $license = get_option('orcid_publications_license_key');
     if ($license) {
