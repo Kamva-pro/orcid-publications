@@ -36,8 +36,8 @@ jobs:
 
       - name: Create Plugin ZIP
         run: |
-          cd ..
-          zip -r orcid-publications.zip orcid-publications -x "*.git*" -x "*.github*" -x "vendor/*" -x "*.DS_Store"
+          cd orcid-publications
+          zip -r ../orcid-publications.zip .
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

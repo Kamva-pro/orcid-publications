@@ -548,21 +548,19 @@ require_once plugin_dir_path(__FILE__) . 'vendor/autoload.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 $myUpdateChecker = PucFactory::buildUpdateChecker(
-    'https://github.com/Kamva-pro/orcid-publications.git',
+    'https://github.com/Kamva-pro/orcid-publications', // Remove .git
     __FILE__,
     'orcid-publications'
 );
 
+// Add these configurations:
 $myUpdateChecker->setBranch('main');
 $myUpdateChecker->getVcsApi()->enableReleaseAssets();
 
-$myUpdateChecker->addQueryArgFilter(function($queryArgs) {
-    $license = get_option('orcid_publications_license_key');
-    if ($license) {
-        $queryArgs['license'] = $license;
-    }
-    return $queryArgs;
-});
+// For private repos (if needed):
+$myUpdateChecker->setAuthentication([
+    'token' => 'your-github-token' // Only needed for private repos
+]);
 
 
 new ORCID_Publications_Plugin();
