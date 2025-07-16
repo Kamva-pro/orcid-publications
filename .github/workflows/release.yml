@@ -21,10 +21,11 @@ jobs:
       - name: Get Plugin Version from Header
         id: get_version
         run: |
-          FILE=$(find . -name "*.php" | head -n 1)
+          FILE="orcid-publications.php"  # <--- your real plugin file
           VERSION=$(grep -Eo "Version:\s*[0-9.]+" "$FILE" | head -n 1 | sed 's/Version:\s*//')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Detected version: $VERSION"
+      
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
