@@ -18,13 +18,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get Plugin Version from Header
+      - name: Get Plugin Version from Plugin File
         id: get_version
         run: |
-          FILE="orcid-publications.php"  # <--- your real plugin file
-          VERSION=$(grep -Eo "Version:\s*[0-9.]+" "$FILE" | head -n 1 | sed 's/Version:\s*//')
+          FILE=$(find . -name "publications-main.php" | head -n 1)
+          if [ ! -f "$FILE" ]; then
+            echo "❌ Could not find plugin file."
+            exit 1
+          fi
+          VERSION=$(grep -Eo "Version:\s*[0-9.]+" "$FILE" | sed 's/Version:\s*//')
+          if [ -z "$VERSION" ]; then
+            echo "❌ Could not extract version from plugin file."
+            exit 1
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Detected version: $VERSION"
+          echo "✅ Detected version: $VERSION"
+      
       
 
       - name: Create GitHub Release
