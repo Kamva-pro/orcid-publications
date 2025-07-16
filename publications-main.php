@@ -2,10 +2,9 @@
 /*
 Plugin Name: ORCID Publications
 Description: Displays ORCID publications with filtering and context-aware display
-Version: 1.0.5
+Version: 1.0.6
 Author: <a href="https://dynamite.agency" target="_blank">Dynamite Agency</a>
 Update URI: https://github.com/Kamva-pro/orcid-publications
-Text Domain: orcid-publications
 */
 
 
