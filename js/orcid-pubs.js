@@ -5,6 +5,7 @@ jQuery(document).ready(function($) {
     const yearFilter = $('#yearFilter');
     
     let allWorks = [];
+    let displayedWorks = [];
     let currentIndex = 0;
     const pageSize = 10;
     let currentOrcidId = orcidPubVars.current_page;
@@ -23,7 +24,6 @@ jQuery(document).ready(function($) {
     searchInput.on('input', function() {
         currentSearch = $(this).val();
         currentIndex = 0;
-        resultsDiv.empty();
         fetchPublications();
     });
     
@@ -31,20 +31,24 @@ jQuery(document).ready(function($) {
     yearFilter.on('change', function() {
         currentYear = $(this).val();
         currentIndex = 0;
-        resultsDiv.empty();
         fetchPublications();
     });
     
     // Load more handler
     loadMoreBtn.on('click', function() {
         if (!isLoading) {
+            currentIndex += pageSize;
             fetchPublications();
         }
     });
     
     function fetchPublications() {
         isLoading = true;
-        showLoadingState();
+        
+        // Only show loading state on initial load or when filters change
+        if (currentIndex === 0) {
+            showLoadingState();
+        }
         
         const endpoint = currentOrcidId === 'all' 
             ? 'publications' 
@@ -62,17 +66,19 @@ jQuery(document).ready(function($) {
             data: params,
             success: function(response) {
                 if (currentIndex === 0) {
+                    // First load or filter changed - replace all works
                     allWorks = response.data;
-                    resultsDiv.empty();
+                    resultsDiv.empty(); // Only clear on initial load
                 } else {
+                    // Append new works to existing ones
                     allWorks = [...allWorks, ...response.data];
                 }
                 
-                displayWorks(response.data);
+                // Display all loaded works (not just the new ones)
+                displayWorks(allWorks.slice(0, currentIndex + pageSize));
                 
-                currentIndex += response.data.length;
-                
-                if (currentIndex < response.total) {
+                // Update pagination controls
+                if (currentIndex + pageSize < response.total) {
                     loadMoreBtn.show();
                 } else {
                     loadMoreBtn.hide();
@@ -91,13 +97,23 @@ jQuery(document).ready(function($) {
         });
     }
     
-    function displayWorks(works) {
-        if (works.length === 0 && currentIndex === 0) {
+    function displayWorks(worksToDisplay) {
+        if (worksToDisplay.length === 0) {
             showEmptyState();
             return;
         }
         
-        works.forEach(work => {
+        // Clear only if it's the first page
+        if (currentIndex === 0) {
+            resultsDiv.empty();
+        }
+        
+        // Only append the new works (not all of them)
+        const worksToAdd = currentIndex === 0 
+            ? worksToDisplay 
+            : worksToDisplay.slice(currentIndex);
+        
+        worksToAdd.forEach(work => {
             const workEntry = $(`
                 <div class="work-entry">
                     <div class="date-col">
@@ -152,5 +168,4 @@ jQuery(document).ready(function($) {
             </div>
         `);
         loadMoreBtn.hide();
-    }
-});
+    }});
