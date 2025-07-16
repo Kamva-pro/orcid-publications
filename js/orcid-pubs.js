@@ -18,6 +18,44 @@ jQuery(document).ready(function($) {
     } else {
         resultsDiv.html('');
     }
+
+    if (orcidPubVars.current_researcher) {
+        // Force fetch for the specific researcher
+        currentOrcidId = 'specific';
+        fetchResearcherPublications(orcidPubVars.current_researcher);
+    } else if (currentOrcidId) {
+        // Normal auto-load
+        fetchPublications();
+    }
+    
+    // New function to handle researcher-specific loading
+    function fetchResearcherPublications(researcherSlug) {
+        isLoading = true;
+        showLoadingState();
+        
+        $.get({
+            url: `${orcidPubVars.rest_url}/publications`,
+            data: {
+                researcher: researcherSlug,
+                page: 1,
+                limit: pageSize
+            },
+            success: function(response) {
+                allWorks = response.data;
+                displayWorks(allWorks);
+                
+                if (response.total > pageSize) {
+                    loadMoreBtn.show();
+                }
+            },
+            error: function(xhr, status, error) {
+                showErrorState(error);
+            },
+            complete: function() {
+                isLoading = false;
+            }
+        });
+    }
     
     // Search handler
     searchInput.on('input', function() {

@@ -136,7 +136,8 @@ class ORCID_Publications_Plugin {
         
         wp_localize_script('orcid-pubs-js', 'orcidPubVars', [
             'rest_url' => rest_url('orcid-pubs/v1'),
-            'current_page' => $this->get_current_page_context()
+            'current_page' => $this->get_current_page_context(),
+            'current_researcher' => isset($_GET['researcher']) ? sanitize_text_field($_GET['researcher']) : ''
         ]);
     }
 
@@ -148,10 +149,19 @@ class ORCID_Publications_Plugin {
             return 'all';
         }
         
-        // Check team member pages
-        if (strpos($current_path, '/team-member/') === 0) {
+        // Check team member pages (both /team-member/slug and ?researcher=slug)
+        if ($current_path === '/team-member/') {
+            // Check URL parameter first
+            if (isset($_GET['researcher'])) {
+                $slug = sanitize_text_field($_GET['researcher']);
+                foreach ($this->researchers as $researcher) {
+                    if ($researcher['url_segment'] === $slug) {
+                        return $researcher['id'];
+                    }
+                }
+            }
+            // Fallback to path-based detection
             $slug = basename(untrailingslashit($current_path));
-            
             foreach ($this->researchers as $researcher) {
                 if ($researcher['url_segment'] === $slug) {
                     return $researcher['id'];
@@ -161,12 +171,10 @@ class ORCID_Publications_Plugin {
         
         return ''; // Don't show on other pages
     }
-
     public function render_publications() {
         ob_start(); ?>
         <div class="orcid-publications-container">
             <div class="publications-header">
-                <h1>ORCID Publications</h1>
                 <div class="controls">
                     <div class="search-box">
                         <input type="text" id="pubSearch" placeholder="Search publications...">
@@ -372,10 +380,21 @@ class ORCID_Publications_Plugin {
         $limit = isset($params['limit']) ? max(1, intval($params['limit'])) : 10;
         $search = isset($params['search']) ? sanitize_text_field($params['search']) : '';
         $year = isset($params['year']) ? intval($params['year']) : null;
+        $researcher_slug = isset($params['researcher']) ? sanitize_text_field($params['researcher']) : null;
 
         $all_works = [];
+        $researchers_to_check = $this->researchers;
         
-        foreach ($this->researchers as $researcher) {
+        // Filter researchers if slug is provided
+        if ($researcher_slug) {
+            $researchers_to_check = array_filter($this->researchers, 
+                function($r) use ($researcher_slug) {
+                    return $r['url_segment'] === $researcher_slug;
+                }
+            );
+        }
+    
+        foreach ($researchers_to_check as $researcher) {
             $works = $this->fetch_orcid_works($researcher['id']);
             if ($works) {
                 foreach ($works as $work) {
