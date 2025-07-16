@@ -2,7 +2,7 @@
 /*
 Plugin Name: ORCID Publications
 Description: Displays ORCID publications with filtering and context-aware display
-Version: 1.0.4
+Version: 1.0.5
 Author: <a href="https://dynamite.agency" target="_blank">Dynamite Agency</a>
 Update URI: https://github.com/Kamva-pro/orcid-publications
 */
@@ -552,6 +552,9 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
     'orcid-publications'
 );
 
+$myUpdateChecker->setBranch('main');
+$myUpdateChecker->getVcsApi()->enableReleaseAssets();
+
 $myUpdateChecker->addQueryArgFilter(function($queryArgs) {
     $license = get_option('orcid_publications_license_key');
     if ($license) {
@@ -559,5 +562,6 @@ $myUpdateChecker->addQueryArgFilter(function($queryArgs) {
     }
     return $queryArgs;
 });
+
 
 new ORCID_Publications_Plugin();
