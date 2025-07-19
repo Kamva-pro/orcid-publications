@@ -143,25 +143,32 @@ class ORCID_Publications_Plugin {
 
     private function get_current_page_context() {
         $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        
-        // Check publications page
-        if ($current_path === '/publications/') {
+        $current_path = untrailingslashit($current_path); // Normalize by removing trailing slash
+
+        // Option 1: Main Publications Page
+        if ($current_path === '/publications') { // Exact match for the main page
             return 'all';
         }
-        
-        // Check team member pages (both /team-member/slug and ?researcher=slug)
-        if ($current_path === '/team-member/') {
-            // Check URL parameter first
-            if (isset($_GET['researcher'])) {
-                $slug = sanitize_text_field($_GET['researcher']);
-                foreach ($this->researchers as $researcher) {
-                    if ($researcher['url_segment'] === $slug) {
-                        return $researcher['id'];
-                    }
+
+        // Option 2: Team Member Page (by URL parameter, e.g., /team-member/?researcher=slug)
+        if (isset($_GET['researcher'])) {
+            $slug = sanitize_text_field($_GET['researcher']);
+            foreach ($this->researchers as $researcher) {
+                if ($researcher['url_segment'] === $slug) {
+                    return $researcher['id'];
                 }
             }
-            // Fallback to path-based detection
-            $slug = basename(untrailingslashit($current_path));
+        }
+
+        // Option 3: Team Member Page (by URL slug, e.g., /team-member/prof-shabir-madhi/)
+        // Check if the path starts with '/team-member/' and is longer than just '/team-member'
+        if (strpos($current_path, '/team-member/') === 0 && strlen($current_path) > strlen('/team-member')) {
+            $parts = explode('/', $current_path);
+            $slug = end($parts); // Get the last part of the path (the slug)
+            
+            // Clean the slug just in case
+            $slug = sanitize_title($slug); 
+
             foreach ($this->researchers as $researcher) {
                 if ($researcher['url_segment'] === $slug) {
                     return $researcher['id'];
@@ -169,9 +176,12 @@ class ORCID_Publications_Plugin {
             }
         }
         
-        return ''; // Don't show on other pages
+        // If none of the above conditions match, it's not a recognized context for the plugin
+        return '';
     }
-    public function render_publications() {
+
+
+   public function render_publications() {
         ob_start(); ?>
         <div class="orcid-publications-container">
             <div class="publications-header">
@@ -182,13 +192,17 @@ class ORCID_Publications_Plugin {
                     </div>
                     <select id="yearFilter">
                         <option value="">All Years</option>
-                        <?php for ($year = date('Y'); $year >= 2000; $year--): ?>
-                            <option value="<?php echo $year; ?>"><?php echo $year; ?></option>
+                        <?php
+                        $current_year = date('Y'); // Get the current year (e.g., 2025)
+                        for ($year = $current_year; $year >= 2000; $year--): ?>
+                            <option value="<?php echo $year; ?>" <?php echo ($year == $current_year) ? 'selected' : ''; ?>>
+                                <?php echo $year; ?>
+                            </option>
                         <?php endfor; ?>
                     </select>
                 </div>
             </div>
-            
+
             <div id="publicationsResults">
                 <div class="empty-state">
                     <i class="fas fa-cloud"></i>
@@ -196,7 +210,7 @@ class ORCID_Publications_Plugin {
                     <p>Loading publications from ORCID...</p>
                 </div>
             </div>
-            
+
             <button id="loadMoreBtn" style="display:none;">
                 <i class="fas fa-arrow-down"></i>
                 Load More

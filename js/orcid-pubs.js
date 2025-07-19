@@ -3,145 +3,119 @@ jQuery(document).ready(function($) {
     const loadMoreBtn = $('#loadMoreBtn');
     const searchInput = $('#pubSearch');
     const yearFilter = $('#yearFilter');
-    
+
     let allWorks = [];
-    let currentIndex = 0;
+    let currentPage = 1;
     const pageSize = 10;
-    let currentOrcidId = orcidPubVars.current_page;
+    let currentOrcidContext = orcidPubVars.current_page; // This is crucial and must be correctly populated by PHP
     let isLoading = false;
     let currentSearch = '';
-    let currentYear = '';
-    
-    // Auto-fetch on page load if we're on a relevant page
-    if (currentOrcidId) {
+    // Initialize currentYear with the value of the visually selected option from PHP
+    let currentYear = yearFilter.val(); // This will be '2025' on initial load
+
+    let totalPublications = 0;
+
+    // --- START CORRECTED JAVASCRIPT INITIALIZATION ---
+    if (currentOrcidContext) {
+        // If we are on a recognized publications page, immediately start fetching
         fetchPublications();
     } else {
-        resultsDiv.html('');
+        // If not a recognized page, show the "not configured" message
+        resultsDiv.html(`
+            <div class="empty-state">
+                <i class="fas fa-info-circle"></i>
+                <h3>Plugin Not Configured for This Page</h3>
+                <p>Please ensure the shortcode is on the main publications page or a team member profile page with correct URL structure.</p>
+            </div>
+        `);
+        loadMoreBtn.hide();
+        // Hide initial empty state if present from PHP, as we're showing our own
+        resultsDiv.find('.empty-state').remove();
     }
+    // --- END CORRECTED JAVASCRIPT INITIALIZATION ---
 
-    if (orcidPubVars.current_researcher) {
-        // Force fetch for the specific researcher
-        currentOrcidId = 'specific';
-        fetchResearcherPublications(orcidPubVars.current_researcher);
-    } else if (currentOrcidId) {
-        // Normal auto-load
-        fetchPublications();
-    }
-    
-    // New function to handle researcher-specific loading
-    function fetchResearcherPublications(researcherSlug) {
-        isLoading = true;
-        showLoadingState();
-        
-        $.get({
-            url: `${orcidPubVars.rest_url}/publications`,
-            data: {
-                researcher: researcherSlug,
-                page: 1,
-                limit: pageSize
-            },
-            success: function(response) {
-                allWorks = response.data;
-                displayWorks(allWorks);
-                
-                if (response.total > pageSize) {
-                    loadMoreBtn.show();
-                }
-            },
-            error: function(xhr, status, error) {
-                showErrorState(error);
-            },
-            complete: function() {
-                isLoading = false;
-            }
-        });
-    }
-    
     // Search handler
     searchInput.on('input', function() {
         currentSearch = $(this).val();
-        currentIndex = 0;
+        currentPage = 1;
         fetchPublications();
     });
-    
+
     // Year filter handler
     yearFilter.on('change', function() {
         currentYear = $(this).val();
-        currentIndex = 0;
+        currentPage = 1;
         fetchPublications();
     });
-    
-    // Load more handler - prevent default form submission
+
+    // Load more handler
     loadMoreBtn.on('click', function(e) {
         e.preventDefault();
         if (!isLoading) {
-            fetchPublications(true); // true = is load more action
+            currentPage++;
+            fetchPublications(true);
         }
     });
-    
+
     function fetchPublications(isLoadMore = false) {
-        // Don't proceed if we're already loading
         if (isLoading) return;
-        
+
         isLoading = true;
-        
-        // Show loading state only on initial load or filter changes
+
         if (!isLoadMore) {
+            // On initial load or filter change, ensure we show loading state
+            // and clear previous content (like the initial PHP placeholder)
             showLoadingState();
         } else {
-            // For "Load More", show loading on the button
             loadMoreBtn.prop('disabled', true)
-                      .html('<i class="fas fa-spinner fa-spin"></i> Loading...');
+                       .html('<i class="fas fa-spinner fa-spin"></i> Loading...');
         }
-        
-        const endpoint = currentOrcidId === 'all' 
-            ? 'publications' 
-            : `publications/${currentOrcidId}`;
-            
+
+        let endpoint;
         const params = {
-            page: Math.floor(currentIndex / pageSize) + 1,
+            page: currentPage,
             limit: pageSize,
             search: currentSearch,
             year: currentYear
         };
-        
+
+        if (currentOrcidContext === 'all') {
+            endpoint = 'publications';
+        } else {
+            endpoint = `publications/${currentOrcidContext}`;
+            // No need to delete params.researcher as it's not added for this endpoint.
+            // If for some reason it's being added elsewhere, ensure it's not.
+        }
+
         $.get({
             url: `${orcidPubVars.rest_url}/${endpoint}`,
             data: params,
             success: function(response) {
+                totalPublications = response.total;
+
                 if (!isLoadMore) {
-                    // Initial load or filter changed - replace all works
                     allWorks = response.data;
-                    resultsDiv.empty();
+                    resultsDiv.empty(); // Clear existing content for new fetch
                 } else {
-                    // Append new works to existing ones
                     allWorks = [...allWorks, ...response.data];
                 }
-                
-                // Display all works up to current index + pageSize
-                displayWorks(allWorks.slice(0, currentIndex + pageSize));
-                
-                // Update pagination controls
-                if (currentIndex + response.data.length < response.total) {
+
+                displayWorks(allWorks);
+
+                if (allWorks.length < totalPublications) {
                     loadMoreBtn.show();
                 } else {
                     loadMoreBtn.hide();
                 }
-                
-                if (response.data.length === 0 && currentIndex === 0) {
+
+                if (totalPublications === 0) {
                     showEmptyState();
-                }
-                
-                // Increment index only after successful load
-                if (isLoadMore) {
-                    currentIndex += pageSize;
                 }
             },
             error: function(xhr, status, error) {
-                showErrorState(error);
-                // Reset index if load more failed
+                showErrorState(xhr.responseJSON ? xhr.responseJSON.error : error);
                 if (isLoadMore) {
-                    currentIndex -= pageSize;
+                    currentPage--;
                 }
             },
             complete: function() {
@@ -153,19 +127,35 @@ jQuery(document).ready(function($) {
             }
         });
     }
-    
+
     function displayWorks(works) {
+        console.log('displayWorks called. Number of works to display:', works.length);
+        console.log('Works array content (first 2):', works.slice(0, 2));
+
+        // Clear any previous states (loading, empty, error). This should always happen.
+        console.log('Clearing previous states (loading, empty, error).');
+        resultsDiv.find('.loading, .empty-state, .error-state').remove();
+
+        // If it's the first page of a fetch (meaning it's not a "Load More" action),
+        // clear the entire results container before appending new content.
+        // This ensures the initial PHP placeholder is removed and previous filter results are cleared.
+        if (currentPage === 1) { // Removed !isLoading condition here
+            console.log('Clearing resultsDiv for a new fetch (currentPage is 1).');
+            resultsDiv.empty();
+        }
+
         if (works.length === 0) {
+            console.log('Works array is empty, showing empty state.');
             showEmptyState();
             return;
         }
-        
-        // Clear only if it's not a load more action
-        if (currentIndex === 0) {
-            resultsDiv.empty();
-        }
-        
+
         works.forEach(work => {
+            // Basic validation for critical properties
+            if (!work.title || !work.author || !work.date) {
+                console.warn('Skipping malformed work entry:', work);
+                return;
+            }
             const workEntry = $(`
                 <div class="work-entry">
                     <div class="date-col">
@@ -186,8 +176,9 @@ jQuery(document).ready(function($) {
             `);
             resultsDiv.append(workEntry);
         });
+        console.log('Finished appending works. ResultsDiv content now:', resultsDiv.html()); // Final check
     }
-    
+
     function showLoadingState() {
         resultsDiv.html(`
             <div class="loading">
@@ -198,7 +189,7 @@ jQuery(document).ready(function($) {
         `);
         loadMoreBtn.hide();
     }
-    
+
     function showEmptyState() {
         resultsDiv.html(`
             <div class="empty-state">
@@ -209,7 +200,7 @@ jQuery(document).ready(function($) {
         `);
         loadMoreBtn.hide();
     }
-    
+
     function showErrorState(error) {
         resultsDiv.html(`
             <div class="error-state">
