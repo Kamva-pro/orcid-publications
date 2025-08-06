@@ -580,7 +580,7 @@ require_once plugin_dir_path(__FILE__) . 'vendor/autoload.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 $myUpdateChecker = PucFactory::buildUpdateChecker(
-    'https://github.com/Kamva-pro/orcid-publications', // Remove .git
+    'https://github.com/Kamva-pro/orcid-publications', 
     __FILE__,
     'orcid-publications'
 );

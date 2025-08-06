@@ -7,41 +7,21 @@ jQuery(document).ready(function($) {
     let allWorks = [];
     let currentPage = 1;
     const pageSize = 10;
-    let currentOrcidContext = orcidPubVars.current_page; // This is crucial and must be correctly populated by PHP
+    let currentOrcidContext = orcidPubVars.current_page;
     let isLoading = false;
     let currentSearch = '';
-    // Initialize currentYear with the value of the visually selected option from PHP
-    let currentYear = yearFilter.val(); // This will be '2025' on initial load
+    let currentYear = yearFilter.val(); 
 
     let totalPublications = 0;
 
-    // --- START CORRECTED JAVASCRIPT INITIALIZATION ---
-    if (currentOrcidContext) {
-        // If we are on a recognized publications page, immediately start fetching
-        fetchPublications();
-    } else {
-        // If not a recognized page, show the "not configured" message
-        resultsDiv.html(`
-            <div class="empty-state">
-                <i class="fas fa-info-circle"></i>
-                <h3>Plugin Not Configured for This Page</h3>
-                <p>Please ensure the shortcode is on the main publications page or a team member profile page with correct URL structure.</p>
-            </div>
-        `);
-        loadMoreBtn.hide();
-        // Hide initial empty state if present from PHP, as we're showing our own
-        resultsDiv.find('.empty-state').remove();
-    }
-    // --- END CORRECTED JAVASCRIPT INITIALIZATION ---
-
-    // Search handler
+    fetchPublications();
+  
     searchInput.on('input', function() {
         currentSearch = $(this).val();
         currentPage = 1;
         fetchPublications();
     });
 
-    // Year filter handler
     yearFilter.on('change', function() {
         currentYear = $(this).val();
         currentPage = 1;
@@ -63,8 +43,7 @@ jQuery(document).ready(function($) {
         isLoading = true;
 
         if (!isLoadMore) {
-            // On initial load or filter change, ensure we show loading state
-            // and clear previous content (like the initial PHP placeholder)
+
             showLoadingState();
         } else {
             loadMoreBtn.prop('disabled', true)
