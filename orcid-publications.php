@@ -22,8 +22,6 @@ class ORCID_Publications_Plugin {
         add_action('rest_api_init', [$this, 'register_api_routes']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_shortcode('orcid_publications', [$this, 'render_publications']);
-        add_shortcode('orcid_researcher_publications', [$this, 'render_researcher_publications']);
-
         
         // Admin hooks
         add_action('admin_menu', [$this, 'add_admin_menu']);
@@ -178,20 +176,19 @@ class ORCID_Publications_Plugin {
             }
         }
         
-        // If none of the above conditions match, it's not a recognized context for the plugin
         return '';
     }
 
 
-   public function render_publications() {
-        ob_start(); ?>
-        <div class="orcid-publications-container">
+    // public function render_publications() {
+        /*  ob_start(); ?>
+         <div class="orcid-publications-container">
             <div class="publications-header">
                 <div class="controls">
                 <select id="yearFilter">
                         <option value="">All Years</option>
                         <?php
-                        $current_year = date('Y'); // Get the current year (e.g., 2025)
+                        $current_year = date('Y'); 
                         for ($year = $current_year; $year >= 2000; $year--): ?>
                             <option value="<?php echo $year; ?>" <?php echo ($year == $current_year) ? 'selected' : ''; ?>>
                                 <?php echo $year; ?>
@@ -218,12 +215,74 @@ class ORCID_Publications_Plugin {
                 <i class="fas fa-arrow-down"></i>
                 Load More
             </button>
+        </div> -->
+        return ob_get_clean();
+    } */
+
+
+    public function render_publications($atts = []) {
+        $atts = shortcode_atts([
+            'name' => ''
+        ], $atts, 'orcid_publications');
+    
+        $researcher_id = '';
+        
+        // If a name is passed, match it against your known researchers
+        if (!empty($atts['name'])) {
+            $slug = sanitize_title($atts['name']);
+            foreach ($this->researchers as $researcher) {
+                if (sanitize_title($researcher['name']) === $slug) {
+                    $researcher_id = $researcher['id'];
+                    break;
+                }
+            }
+        }
+    
+        // Pass researcher ID to JS
+        wp_localize_script('orcid-pubs-js', 'orcidPubVars', [
+            'rest_url' => rest_url('orcid-pubs/v1'),
+            'current_page' => $researcher_id ?: 'all'  // if no name passed, fetch all
+        ]);
+    
+        ob_start(); ?>
+        <div class="orcid-publications-container">
+            <div class="publications-header">
+                <div class="controls">
+                    <select id="yearFilter">
+                        <option value="">All Years</option>
+                        <?php
+                        $current_year = date('Y');
+                        for ($year = $current_year; $year >= 2000; $year--): ?>
+                            <option value="<?php echo $year; ?>" <?php echo ($year == $current_year) ? 'selected' : ''; ?>>
+                                <?php echo $year; ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                    <div class="search-box">
+                        <input type="text" id="pubSearch" placeholder="Search publications...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+    
+            <div id="publicationsResults">
+                <div class="empty-state">
+                    <i class="fas fa-cloud"></i>
+                    <h3>No Publications Loaded</h3>
+                    <p>Loading publications from ORCID...</p>
+                </div>
+            </div>
+    
+            <button id="loadMoreBtn" style="display:none;">
+                <i class="fas fa-arrow-down"></i>
+                Load More
+            </button>
         </div>
         <?php
         return ob_get_clean();
     }
+    
 
-    // Admin menu and settings
     public function add_admin_menu() {
         add_options_page(
             'ORCID Publications Settings',
