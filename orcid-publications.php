@@ -22,6 +22,8 @@ class ORCID_Publications_Plugin {
         add_action('rest_api_init', [$this, 'register_api_routes']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_shortcode('orcid_publications', [$this, 'render_publications']);
+        add_shortcode('orcid_researcher_publications', [$this, 'render_researcher_publications']);
+
         
         // Admin hooks
         add_action('admin_menu', [$this, 'add_admin_menu']);

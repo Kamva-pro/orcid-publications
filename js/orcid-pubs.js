@@ -15,6 +15,7 @@ jQuery(document).ready(function($) {
     let totalPublications = 0;
 
     fetchPublications();
+    
   
     searchInput.on('input', function() {
         currentSearch = $(this).val();
