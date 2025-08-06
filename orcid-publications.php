@@ -186,11 +186,7 @@ class ORCID_Publications_Plugin {
         <div class="orcid-publications-container">
             <div class="publications-header">
                 <div class="controls">
-                    <div class="search-box">
-                        <input type="text" id="pubSearch" placeholder="Search publications...">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <select id="yearFilter">
+                <select id="yearFilter">
                         <option value="">All Years</option>
                         <?php
                         $current_year = date('Y'); // Get the current year (e.g., 2025)
@@ -200,6 +196,11 @@ class ORCID_Publications_Plugin {
                             </option>
                         <?php endfor; ?>
                     </select>
+                    <div class="search-box">
+                        <input type="text" id="pubSearch" placeholder="Search publications...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                   
                 </div>
             </div>
 
