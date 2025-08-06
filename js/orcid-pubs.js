@@ -130,32 +130,28 @@ jQuery(document).ready(function($) {
             return;
         }
 
-        works.forEach(work => {
-            // Basic validation for critical properties
-            if (!work.title || !work.author || !work.date) {
-                console.warn('Skipping malformed work entry:', work);
-                return;
-            }
-            const workEntry = $(`
-                <div class="work-entry">
-                    <div class="date-col">
-                        <div class="date">
-                            <i class="far fa-calendar-alt"></i> ${work.date}
-                        </div>
-                    </div>
-                    <div class="content-col">
-                        <div class="title">${work.title}</div>
-                        <div class="author">by ${work.author}</div>
-                        ${work.url ? `
-                            <a class="read-more" href="${work.url}" target="_blank" rel="noopener noreferrer">
-                                View Publication <i class="fas fa-external-link-alt"></i>
-                            </a>
-                        ` : ''}
-                    </div>
-                </div>
-            `);
-            resultsDiv.append(workEntry);
-        });
+       works.forEach(work => {
+    if (!work.title || !work.author || !work.date) return;
+
+    const workEntry = $(`
+        <div class="work-entry">
+            <div class="work-date">
+                <div class="date-icon"><i class="far fa-calendar-alt"></i></div>
+                <div class="date-text">${work.date}</div>
+            </div>
+            <div class="work-content">
+                <div class="work-title">${work.title}</div>
+                <div class="work-author">by ${work.author}</div>
+                ${work.url ? `
+                    <a class="work-link" href="${work.url}" target="_blank" rel="noopener noreferrer">
+                        View Publication <i class="fas fa-external-link-alt"></i>
+                    </a>` : ''}
+            </div>
+        </div>
+    `);
+    resultsDiv.append(workEntry);
+});
+
         console.log('Finished appending works. ResultsDiv content now:', resultsDiv.html()); // Final check
     }
 

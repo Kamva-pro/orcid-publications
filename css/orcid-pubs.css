@@ -54,7 +54,7 @@
     margin-top: 1rem;
 }
 
-.work-entry {
+/* .work-entry {
     display: grid;
     grid-template-columns: 120px 1fr;
     gap: 1.5rem;
@@ -70,6 +70,74 @@
 .work-entry:hover {
     transform: translateY(-3px);
     box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+} */
+
+.work-entry {
+    display: flex;
+    align-items: flex-start;
+    border: 1px solid #e0e0e0;
+    border-left: 4px solid #0073aa;
+    background: #fff;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: box-shadow 0.3s ease;
+}
+
+.work-entry:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.work-date {
+    width: 120px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+    border-right: 1px solid #eee;
+    padding-right: 15px;
+    margin-right: 15px;
+}
+
+.work-date .date-icon {
+    font-size: 20px;
+    margin-bottom: 5px;
+    color: #0073aa;
+}
+
+.work-date .date-text {
+    font-weight: bold;
+}
+
+.work-content {
+    flex-grow: 1;
+}
+
+.work-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #222;
+}
+
+.work-author {
+    font-size: 14px;
+    color: #777;
+    margin-bottom: 10px;
+}
+
+.work-link {
+    font-size: 14px;
+    color: #0073aa;
+    text-decoration: none;
+    display: inline-block;
+    transition: color 0.2s ease;
+}
+
+.work-link:hover {
+    color: #005f8d;
+    text-decoration: underline;
 }
 
 .date-col {
