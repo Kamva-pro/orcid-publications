@@ -109,6 +109,18 @@ class ORCID_Publications_Plugin {
                 'id' => '0000-0003-0767-6233',
                 'name' => 'Dr Thulo Monare',
                 'url_segment' => 'dr-thulo-monare'
+            ],
+
+            [
+                'id' => '0000-0002-2606-6951',
+                'name' => 'Dr Sana Mahtab',
+                'url_segment' => 'dr-sana-mahtab'
+            ],
+
+            [
+                'id' => '0000-0001-9692-7772',
+                'name' => 'Dr Gaurav Kwatra',
+                'url_segment' => 'dr-gaurav-kwatra'
             ]
         ];
         
@@ -222,26 +234,28 @@ class ORCID_Publications_Plugin {
 
     public function render_publications($atts = []) {
         $atts = shortcode_atts([
-            'name' => ''
+            'id' => '',   // Accept researcher ID instead of name
         ], $atts, 'orcid_publications');
     
         $researcher_id = '';
-        
-        // If a name is passed, match it against your known researchers
-        if (!empty($atts['name'])) {
-            $slug = sanitize_title($atts['name']);
+    
+        // If a researcher ID is passed and exists in researchers, use it directly
+        if (!empty($atts['id'])) {
             foreach ($this->researchers as $researcher) {
-                if (sanitize_title($researcher['name']) === $slug) {
+                if ($researcher['id'] === trim($atts['id'])) {
                     $researcher_id = $researcher['id'];
                     break;
                 }
             }
         }
     
+        // If no valid ID passed, default to all
+        $researcher_id = $researcher_id ?: 'all';
+    
         // Pass researcher ID to JS
         wp_localize_script('orcid-pubs-js', 'orcidPubVars', [
             'rest_url' => rest_url('orcid-pubs/v1'),
-            'current_page' => $researcher_id ?: 'all'  // if no name passed, fetch all
+            'current_page' => $researcher_id
         ]);
     
         ob_start(); ?>
@@ -249,14 +263,15 @@ class ORCID_Publications_Plugin {
             <div class="publications-header">
                 <div class="controls">
                     <select id="yearFilter">
-                        <option value="">All Years</option>
+                        <option value="" selected >All Years</option>
                         <?php
                         $current_year = date('Y');
                         for ($year = $current_year; $year >= 2000; $year--): ?>
-                            <option value="<?php echo $year; ?>" <?php echo ($year == $current_year) ? 'selected' : ''; ?>>
+                            <option value="<?php echo $year; ?>">
                                 <?php echo $year; ?>
                             </option>
                         <?php endfor; ?>
+                        
                     </select>
                     <div class="search-box">
                         <input type="text" id="pubSearch" placeholder="Search publications...">
@@ -281,6 +296,7 @@ class ORCID_Publications_Plugin {
         <?php
         return ob_get_clean();
     }
+    
     
 
     public function add_admin_menu() {
@@ -598,21 +614,60 @@ class ORCID_Publications_Plugin {
         return null;
     }
 
-    private function format_work_entry($group, $author_name) {
+    private function format_work_entry($group, $researcher_id) {
         $work = $group['work-summary'][0] ?? [];
         $title = $work['title']['title']['value'] ?? 'Untitled Publication';
         $url = $work['url']['value'] ?? null;
         $date = $this->parse_work_date($work);
-
+        
+        // Extract ALL contributors
+        $all_contributors = $this->extract_contributors($work);
+        
+        // Check if our target researcher is in the contributors
+        $is_target_researcher = in_array($researcher_id, array_column($all_contributors, 'orcid'));
+        
         return [
             'title' => $title,
-            'author' => $author_name,
+            'contributors' => $all_contributors,
             'url' => $url,
             'date' => $date['formatted'],
             'raw_date' => $date['iso'],
             'year' => $date['year'],
+            'is_target_researcher' => $is_target_researcher,
             'orcid_data' => $work
         ];
+    }
+    
+    private function extract_contributors($work) {
+        $contributors = [];
+        
+        // Extract from contributors section if available
+        if (isset($work['contributors']['contributor'])) {
+            foreach ($work['contributors']['contributor'] as $contributor) {
+                if (isset($contributor['credit-name']['value'])) {
+                    $contributors[] = [
+                        'name' => $contributor['credit-name']['value'],
+                        'orcid' => $contributor['contributor-orcid']['path'] ?? null,
+                        'role' => $contributor['contributor-role'] ?? 'author'
+                    ];
+                }
+            }
+        }
+        
+        // Also check external identifiers for ORCIDs
+        if (isset($work['external-ids']['external-id'])) {
+            foreach ($work['external-ids']['external-id'] as $external_id) {
+                if ($external_id['external-id-type'] === 'orcid') {
+                    $contributors[] = [
+                        'name' => 'Unknown', // Name might not be in external-id
+                        'orcid' => $external_id['external-id-value'],
+                        'role' => 'author'
+                    ];
+                }
+            }
+        }
+        
+        return $contributors;
     }
 
     private function parse_work_date($work) {

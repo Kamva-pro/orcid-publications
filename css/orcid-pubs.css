@@ -33,6 +33,7 @@
     border: 1px solid #e9ecef;
     border-radius: 6px;
     width: 500px;
+    left: 2rem;
 }
 
 .search-box i {
