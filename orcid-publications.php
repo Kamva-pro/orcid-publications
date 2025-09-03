@@ -472,42 +472,43 @@ class ORCID_Publications_Plugin {
         $limit = isset($params['limit']) ? max(1, intval($params['limit'])) : 10;
         $search = isset($params['search']) ? sanitize_text_field($params['search']) : '';
         $year = isset($params['year']) ? intval($params['year']) : null;
-        $researcher_slug = isset($params['researcher']) ? sanitize_text_field($params['researcher']) : null;
-
-        $all_works = [];
-        $researchers_to_check = $this->researchers;
-        
-        // Filter researchers if slug is provided
-        if ($researcher_slug) {
-            $researchers_to_check = array_filter($this->researchers, 
-                function($r) use ($researcher_slug) {
-                    return $r['url_segment'] === $researcher_slug;
-                }
-            );
-        }
+        $target_researcher_id = isset($params['researcher_id']) ? sanitize_text_field($params['researcher_id']) : null;
     
-        foreach ($researchers_to_check as $researcher) {
+        $all_works = [];
+        
+        foreach ($this->researchers as $researcher) {
             $works = $this->fetch_orcid_works($researcher['id']);
+            
             if ($works) {
                 foreach ($works as $work) {
-                    $entry = $this->format_work_entry($work, $researcher['name']);
-                    if ($this->filter_work($entry, $search, $year)) {
-                        $entry['orcid_id'] = $researcher['id'];
+                    $entry = $this->format_work_entry($work, $researcher['id']);
+                    
+                    // Only include if it's the target researcher OR if no specific researcher filter
+                    $include_work = true;
+                    
+                    if ($target_researcher_id) {
+                        $include_work = $entry['is_target_researcher'];
+                    }
+                    
+                    if ($include_work && $this->filter_work($entry, $search, $year)) {
                         $all_works[] = $entry;
                     }
                 }
             }
         }
-
+    
+        // Remove duplicates (same publication from multiple researchers)
+        $all_works = $this->remove_duplicate_publications($all_works);
+        
         usort($all_works, function($a, $b) {
             return strtotime($b['raw_date']) - strtotime($a['raw_date']);
         });
-
+    
         $total = count($all_works);
         $total_pages = ceil($total / $limit);
         $offset = ($page - 1) * $limit;
         $data = array_slice($all_works, $offset, $limit);
-
+    
         return [
             'total' => $total,
             'page' => $page,
@@ -516,7 +517,24 @@ class ORCID_Publications_Plugin {
             'data' => $data
         ];
     }
+    
+    private function remove_duplicate_publications($works) {
+        $unique_works = [];
+        $seen_titles = [];
+        
+        foreach ($works as $work) {
+            $title_key = md5(strtolower($work['title']));
+            
+            if (!in_array($title_key, $seen_titles)) {
+                $seen_titles[] = $title_key;
+                $unique_works[] = $work;
+            }
+        }
+        
+        return $unique_works;
+    }
 
+    
     public function get_researcher_publications(WP_REST_Request $request) {
         $orcid_id = $request->get_param('orcid_id');
         $params = $request->get_params();
