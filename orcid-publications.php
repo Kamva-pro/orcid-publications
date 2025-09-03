@@ -12,6 +12,74 @@ defined('ABSPATH') or die('Direct access not allowed');
 
 class ORCID_Publications_Plugin {
     private $researchers;
+    private $non_orcid_researchers = [
+        [
+            'name' => 'Dr Shama Khan',
+            'url_segment' => 'shama-khan',
+            'search_names' => ['Shama Khan', 'S. Khan', 'Khan S']
+        ],
+        [
+            'name' => 'Dr Siobhan Johnstone',
+            'url_segment' => 'siobhan-johnstone',
+            'search_names' => ['Siobhan Johnstone', 'S. Johnstone', 'Johnstone S']
+        ],
+        [
+            'name' => 'Dr Takwanisa Machemedze',
+            'url_segment' => 'takwanisa-machemedze',
+            'search_names' => ['Takwanisa Machemedze', 'T. Machemedze', 'Machemedze T']
+        ],
+        [
+            'name' => 'Dr Sarah Downs',
+            'url_segment' => 'sarah-downs',
+            'search_names' => ['Sarah Downs', 'S. Downs', 'Downs S']
+        ],
+        [
+            'name' => 'Dr Thulo Monare',
+            'url_segment' => 'thulo-monare',
+            'search_names' => ['Thulo Monare', 'T. Monare', 'Monare T']
+        ],
+        [
+            'name' => 'Musa Mncube',
+            'url_segment' => 'musa-mncube',
+            'search_names' => ['Musa Mncube', 'M. Mncube', 'Mncube M']
+        ],
+        [
+            'name' => 'Dr Megan Dempster',
+            'url_segment' => 'megan-dempster',
+            'search_names' => ['Megan Dempster', 'M. Dempster', 'Dempster M']
+        ],
+        [
+            'name' => 'Theranne van Vuren',
+            'url_segment' => 'theranne-van-vuren',
+            'search_names' => ['Theranne van Vuren', 'T. van Vuren', 'van Vuren T']
+        ],
+        [
+            'name' => 'Dr Farzanah Laher',
+            'url_segment' => 'farzanah-laher',
+            'search_names' => ['Farzanah Laher', 'F. Laher', 'Laher F']
+        ],
+        [
+            'name' => 'Dr Lisa Nunes',
+            'url_segment' => 'lisa-nunes',
+            'search_names' => ['Lisa Nunes', 'L. Nunes', 'Nunes L']
+        ],
+        [
+            'name' => 'Nadia van Nierkerk',
+            'url_segment' => 'nadia-van-nierkerk',
+            'search_names' => ['Nadia van Nierkerk', 'N. van Nierkerk', 'van Nierkerk N']
+        ],
+        [
+            'name' => 'Reem Mutwali',
+            'url_segment' => 'reem-mutwali',
+            'search_names' => ['Reem Mutwali', 'R. Mutwali', 'Mutwali R']
+        ],
+        [
+            'name' => 'Dr Shabnam Shaik',
+            'url_segment' => 'shabnam-shaik',
+            'search_names' => ['Shabnam Shaik', 'S. Shaik', 'Shaik S']
+        ]
+    ];
+
     private $option_key = 'orcid_publications_researchers';
 
     public function __construct() {
@@ -140,6 +208,12 @@ class ORCID_Publications_Plugin {
             'callback' => [$this, 'get_researcher_publications'],
             'permission_callback' => '__return_true'
         ]);
+
+        register_rest_route('orcid-pubs/v1', '/non-orcid-publications/(?P<researcher_slug>[a-zA-Z0-9\-]+)', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_non_orcid_publications'],
+            'permission_callback' => '__return_true'
+        ]);
     }
 
     public function enqueue_assets() {
@@ -155,14 +229,13 @@ class ORCID_Publications_Plugin {
 
     private function get_current_page_context() {
         $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        $current_path = untrailingslashit($current_path); // Normalize by removing trailing slash
-
-        // Option 1: Main Publications Page
-        if ($current_path === '/publications') { // Exact match for the main page
+        $current_path = untrailingslashit($current_path);
+    
+        // Existing ORCID researcher detection (unchanged)
+        if ($current_path === '/publications') {
             return 'all';
         }
-
-        // Option 2: Team Member Page (by URL parameter, e.g., /team-member/?researcher=slug)
+    
         if (isset($_GET['researcher'])) {
             $slug = sanitize_text_field($_GET['researcher']);
             foreach ($this->researchers as $researcher) {
@@ -170,20 +243,28 @@ class ORCID_Publications_Plugin {
                     return $researcher['id'];
                 }
             }
+            // NEW: Check non-ORCID researchers
+            foreach ($this->non_orcid_researchers as $researcher) {
+                if ($researcher['url_segment'] === $slug) {
+                    return 'non_orcid:' . $researcher['url_segment'];
+                }
+            }
         }
-
-        // Option 3: Team Member Page (by URL slug, e.g., /team-member/prof-shabir-madhi/)
-        // Check if the path starts with '/team-member/' and is longer than just '/team-member'
+    
         if (strpos($current_path, '/team-member/') === 0 && strlen($current_path) > strlen('/team-member')) {
             $parts = explode('/', $current_path);
-            $slug = end($parts); // Get the last part of the path (the slug)
-            
-            // Clean the slug just in case
-            $slug = sanitize_title($slug); 
-
+            $slug = end($parts);
+            $slug = sanitize_title($slug);
+    
             foreach ($this->researchers as $researcher) {
                 if ($researcher['url_segment'] === $slug) {
                     return $researcher['id'];
+                }
+            }
+            // NEW: Check non-ORCID researchers
+            foreach ($this->non_orcid_researchers as $researcher) {
+                if ($researcher['url_segment'] === $slug) {
+                    return 'non_orcid:' . $researcher['url_segment'];
                 }
             }
         }
@@ -472,43 +553,42 @@ class ORCID_Publications_Plugin {
         $limit = isset($params['limit']) ? max(1, intval($params['limit'])) : 10;
         $search = isset($params['search']) ? sanitize_text_field($params['search']) : '';
         $year = isset($params['year']) ? intval($params['year']) : null;
-        $target_researcher_id = isset($params['researcher_id']) ? sanitize_text_field($params['researcher_id']) : null;
-    
+        $researcher_slug = isset($params['researcher']) ? sanitize_text_field($params['researcher']) : null;
+
         $all_works = [];
+        $researchers_to_check = $this->researchers;
         
-        foreach ($this->researchers as $researcher) {
+        // Filter researchers if slug is provided
+        if ($researcher_slug) {
+            $researchers_to_check = array_filter($this->researchers, 
+                function($r) use ($researcher_slug) {
+                    return $r['url_segment'] === $researcher_slug;
+                }
+            );
+        }
+    
+        foreach ($researchers_to_check as $researcher) {
             $works = $this->fetch_orcid_works($researcher['id']);
-            
             if ($works) {
                 foreach ($works as $work) {
-                    $entry = $this->format_work_entry($work, $researcher['id']);
-                    
-                    // Only include if it's the target researcher OR if no specific researcher filter
-                    $include_work = true;
-                    
-                    if ($target_researcher_id) {
-                        $include_work = $entry['is_target_researcher'];
-                    }
-                    
-                    if ($include_work && $this->filter_work($entry, $search, $year)) {
+                    $entry = $this->format_work_entry($work, $researcher['name']);
+                    if ($this->filter_work($entry, $search, $year)) {
+                        $entry['orcid_id'] = $researcher['id'];
                         $all_works[] = $entry;
                     }
                 }
             }
         }
-    
-        // Remove duplicates (same publication from multiple researchers)
-        $all_works = $this->remove_duplicate_publications($all_works);
-        
+
         usort($all_works, function($a, $b) {
             return strtotime($b['raw_date']) - strtotime($a['raw_date']);
         });
-    
+
         $total = count($all_works);
         $total_pages = ceil($total / $limit);
         $offset = ($page - 1) * $limit;
         $data = array_slice($all_works, $offset, $limit);
-    
+
         return [
             'total' => $total,
             'page' => $page,
@@ -517,24 +597,7 @@ class ORCID_Publications_Plugin {
             'data' => $data
         ];
     }
-    
-    private function remove_duplicate_publications($works) {
-        $unique_works = [];
-        $seen_titles = [];
-        
-        foreach ($works as $work) {
-            $title_key = md5(strtolower($work['title']));
-            
-            if (!in_array($title_key, $seen_titles)) {
-                $seen_titles[] = $title_key;
-                $unique_works[] = $work;
-            }
-        }
-        
-        return $unique_works;
-    }
 
-    
     public function get_researcher_publications(WP_REST_Request $request) {
         $orcid_id = $request->get_param('orcid_id');
         $params = $request->get_params();
@@ -586,6 +649,93 @@ class ORCID_Publications_Plugin {
         ];
     }
 
+    public function get_non_orcid_publications(WP_REST_Request $request) {
+        $researcher_slug = $request->get_param('researcher_slug');
+        $params = $request->get_params();
+        $page = isset($params['page']) ? max(1, intval($params['page'])) : 1;
+        $limit = isset($params['limit']) ? max(1, intval($params['limit'])) : 10;
+        $search = isset($params['search']) ? sanitize_text_field($params['search']) : '';
+        $year = isset($params['year']) ? intval($params['year']) : null;
+    
+        // Find the non-ORCID researcher
+        $target_researcher = null;
+        foreach ($this->non_orcid_researchers as $researcher) {
+            if ($researcher['url_segment'] === $researcher_slug) {
+                $target_researcher = $researcher;
+                break;
+            }
+        }
+    
+        if (!$target_researcher) {
+            return new WP_REST_Response(['error' => 'Researcher not found'], 404);
+        }
+    
+        $all_works = [];
+        
+        // Get publications from ALL ORCID researchers
+        foreach ($this->researchers as $orcid_researcher) {
+            $works = $this->fetch_orcid_works($orcid_researcher['id']);
+            
+            if ($works) {
+                foreach ($works as $work) {
+                    $entry = $this->format_work_entry($work, $orcid_researcher['name']);
+                    
+                    // Check if the non-ORCID researcher is a contributor
+                    if ($this->is_researcher_in_publication($entry, $target_researcher['search_names'])) {
+                        if ($this->filter_work($entry, $search, $year)) {
+                            $all_works[] = $entry;
+                        }
+                    }
+                }
+            }
+        }
+    
+        usort($all_works, function($a, $b) {
+            return strtotime($b['raw_date']) - strtotime($a['raw_date']);
+        });
+    
+        $total = count($all_works);
+        $total_pages = ceil($total / $limit);
+        $offset = ($page - 1) * $limit;
+        $data = array_slice($all_works, $offset, $limit);
+    
+        return [
+            'researcher' => $target_researcher['name'],
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+            'total_pages' => $total_pages,
+            'data' => $data
+        ];
+    }
+
+    private function is_researcher_in_publication($publication, $search_names) {
+        // Get the full publication data to check contributors
+        $work_data = $publication['orcid_data'] ?? [];
+        
+        // Check contributors section
+        if (isset($work_data['contributors']['contributor'])) {
+            foreach ($work_data['contributors']['contributor'] as $contributor) {
+                $contributor_name = $contributor['credit-name']['value'] ?? '';
+                foreach ($search_names as $search_name) {
+                    if (stripos($contributor_name, $search_name) !== false) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        // Also check title and other fields as fallback
+        $title = $publication['title'] ?? '';
+        foreach ($search_names as $search_name) {
+            if (stripos($title, $search_name) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
     private function filter_work($work, $search, $year) {
         if ($search && 
             stripos($work['title'], $search) === false && 
@@ -632,60 +782,32 @@ class ORCID_Publications_Plugin {
         return null;
     }
 
-    private function format_work_entry($group, $researcher_id) {
+    private function format_work_entry($group, $author_name) {
         $work = $group['work-summary'][0] ?? [];
         $title = $work['title']['title']['value'] ?? 'Untitled Publication';
         $url = $work['url']['value'] ?? null;
         $date = $this->parse_work_date($work);
-        
-        // Extract ALL contributors
-        $all_contributors = $this->extract_contributors($work);
-        
-        // Check if our target researcher is in the contributors
-        $is_target_researcher = in_array($researcher_id, array_column($all_contributors, 'orcid'));
-        
+    
+        // Extract contributors while preserving original structure
+        $contributors = [];
+        if (isset($work['contributors']['contributor'])) {
+            foreach ($work['contributors']['contributor'] as $contributor) {
+                if (isset($contributor['credit-name']['value'])) {
+                    $contributors[] = $contributor['credit-name']['value'];
+                }
+            }
+        }
+    
         return [
             'title' => $title,
-            'contributors' => $all_contributors,
+            'author' => $author_name, // Your original field - unchanged!
             'url' => $url,
             'date' => $date['formatted'],
             'raw_date' => $date['iso'],
             'year' => $date['year'],
-            'is_target_researcher' => $is_target_researcher,
-            'orcid_data' => $work
+            'orcid_data' => $work,
+            'contributors' => $contributors // NEW: Added contributors array
         ];
-    }
-    
-    private function extract_contributors($work) {
-        $contributors = [];
-        
-        // Extract from contributors section if available
-        if (isset($work['contributors']['contributor'])) {
-            foreach ($work['contributors']['contributor'] as $contributor) {
-                if (isset($contributor['credit-name']['value'])) {
-                    $contributors[] = [
-                        'name' => $contributor['credit-name']['value'],
-                        'orcid' => $contributor['contributor-orcid']['path'] ?? null,
-                        'role' => $contributor['contributor-role'] ?? 'author'
-                    ];
-                }
-            }
-        }
-        
-        // Also check external identifiers for ORCIDs
-        if (isset($work['external-ids']['external-id'])) {
-            foreach ($work['external-ids']['external-id'] as $external_id) {
-                if ($external_id['external-id-type'] === 'orcid') {
-                    $contributors[] = [
-                        'name' => 'Unknown', // Name might not be in external-id
-                        'orcid' => $external_id['external-id-value'],
-                        'role' => 'author'
-                    ];
-                }
-            }
-        }
-        
-        return $contributors;
     }
 
     private function parse_work_date($work) {

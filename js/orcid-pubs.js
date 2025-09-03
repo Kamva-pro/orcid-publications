@@ -11,6 +11,7 @@ jQuery(document).ready(function($) {
     let isLoading = false;
     let currentSearch = '';
     let currentYear = yearFilter.val(); 
+    let apiUrl;
 
     let totalPublications = 0;
 
@@ -40,17 +41,17 @@ jQuery(document).ready(function($) {
 
     function fetchPublications(isLoadMore = false) {
         if (isLoading) return;
-
+    
         isLoading = true;
-
+    
         if (!isLoadMore) {
-
             showLoadingState();
         } else {
             loadMoreBtn.prop('disabled', true)
                        .html('<i class="fas fa-spinner fa-spin"></i> Loading...');
         }
-
+    
+        // NEW: Build endpoint with non-ORCID support
         let endpoint;
         const params = {
             page: currentPage,
@@ -58,36 +59,37 @@ jQuery(document).ready(function($) {
             search: currentSearch,
             year: currentYear
         };
-
-        if (currentOrcidContext === 'all') {
+    
+        if (currentOrcidContext.startsWith('non_orcid:')) {
+            const researcher_slug = currentOrcidContext.replace('non_orcid:', '');
+            endpoint = `non-orcid-publications/${researcher_slug}`;
+        } else if (currentOrcidContext === 'all') {
             endpoint = 'publications';
         } else {
             endpoint = `publications/${currentOrcidContext}`;
-            // No need to delete params.researcher as it's not added for this endpoint.
-            // If for some reason it's being added elsewhere, ensure it's not.
         }
-
+    
         $.get({
             url: `${orcidPubVars.rest_url}/${endpoint}`,
             data: params,
             success: function(response) {
                 totalPublications = response.total;
-
+    
                 if (!isLoadMore) {
                     allWorks = response.data;
-                    resultsDiv.empty(); // Clear existing content for new fetch
+                    resultsDiv.empty();
                 } else {
                     allWorks = [...allWorks, ...response.data];
                 }
-
+    
                 displayWorks(allWorks);
-
+    
                 if (allWorks.length < totalPublications) {
                     loadMoreBtn.show();
                 } else {
                     loadMoreBtn.hide();
                 }
-
+    
                 if (totalPublications === 0) {
                     showEmptyState();
                 }
